@@ -112,6 +112,10 @@ services:
       - "~/Docker/general/nginx/etc/nginx/nginx.conf:/usr/local/openresty/nginx/conf/nginx.conf"
       - "~/Docker/general/nginx/etc/nginx/sites-available:/usr/local/openresty/nginx/conf/sites-available"
       - "~/Docker/general/nginx/etc/nginx/sites-enabled:/usr/local/openresty/nginx/conf/sites-enabled"
+    environment:
+      POW_ENABLED: "${POW_ENABLED:-yes}"
+      POW_SECRET: "${POW_SECRET}"
+    entrypoint: /bin/sh -c 'if [ "$POW_ENABLED" = "yes" ] && [ -x /usr/local/bin/altcha-pow ] && [ -n "$POW_SECRET" ]; then /usr/local/bin/altcha-pow & for _i in 1 2 3 4 5; do wget -qO- http://127.0.0.1:8001/health >/dev/null 2>&1 && break; sleep 0.2; done; fi; /usr/local/openresty/bin/openresty -g "daemon off;"'
     networks:
       - revproxy
 
