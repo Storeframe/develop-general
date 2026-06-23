@@ -7,3 +7,4 @@ odoo
 pg_*
 bin/docker
 docker-bin
+nginx/etc/nginx/ssl
