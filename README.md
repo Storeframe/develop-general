@@ -11,6 +11,8 @@ For example a project named johndoe situated in ~/Sites/johndoe will be accessib
 ```
 ~/Docker/general
 Chrome Settings DNS Provider to OS Default
+Docker Desktop installed (>= 8GB memory for MariaDB buffer pool + OpenSearch)
+node/npm installed on the HOST (brew install node) — grunt runs locally, not in a container
 ```
 
 ## Initial Setup (First Time)
@@ -24,7 +26,16 @@ cd ~/Docker/general
 git pull
 ```
 
-### 2. Initialize Environment
+### 2. Create Your .env
+```bash
+cd ~/Docker/general
+cp .env.sample .env
+```
+
+`.env` is gitignored — without this step `docker compose up` fails with an
+invalid image reference (empty `${PHP_VERSION}` etc.).
+
+### 3. Initialize Environment
 ```bash
 cd ~/Docker/general
 sudo sh setup-environment.sh
@@ -39,11 +50,13 @@ sudo sh setup-environment.sh
 
 This will:
 - Set up DNSMasq resolver
-- Create/update bin wrapper scripts (`/usr/local/bin/php`, `/usr/local/bin/composer`, etc.)
+- Create/update bin wrapper scripts (`/usr/local/bin/php`, `/usr/local/bin/composer`, `/usr/local/bin/mage`, etc.)
+- Install the `fixsl` helper (retargets `pub/static` symlinks that point at container paths back to `~/Sites` — needed after grunt/static deploys since grunt runs on the host)
+- Install the `fixnode` helper (restores exec bits on `node_modules` binaries after `npm install` — the container's permission pass strips them)
 - Configure commands that access `/var/www` to use `app` user (PHP, NodeJS, Nginx) for shared volume compatibility
 - Configure database commands (mysql/mysqldump) to use `root` user (mariadb container doesn't have `app` user)
 
-### 3. Start Docker Containers
+### 4. Start Docker Containers
 ```bash
 cd ~/Docker/general
 docker compose up -d

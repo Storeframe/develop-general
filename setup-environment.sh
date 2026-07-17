@@ -200,6 +200,7 @@ EOF
 echo "Creating PHP wrappers..."
 create_php_wrapper "php" "php -d memory_limit=-1"
 create_php_wrapper "composer" "php -d memory_limit=-1 /usr/local/bin/composer"
+create_php_wrapper "mage" "php -d memory_limit=-1 bin/magento"
 create_php_wrapper "magerun" "magerun"
 create_php_wrapper "magerun2" "magerun2"
 create_php_wrapper "msmtp" "msmtp"
@@ -216,5 +217,59 @@ create_redis_wrapper
 
 echo "Creating Nginx wrapper..."
 create_nginx_wrapper
+
+# Install a standalone helper script to both targets (same pattern as wrappers)
+# Content is read from stdin (heredoc)
+create_static_script() {
+    local name="$1"
+    local target1="/usr/local/bin/$name"
+    local target2="$HOME/Docker/general/bin/$name"
+    local content
+    content="$(cat)"
+
+    printf '%s\n' "$content" | sudo tee "$target1" > /dev/null
+    printf '%s\n' "$content" | sudo tee "$target2" > /dev/null
+    sudo chmod +rx "$target1" "$target2"
+}
+
+echo "Creating fixsl helper (retarget container-path symlinks in pub/static)..."
+create_static_script "fixsl" <<'EOF'
+#!/bin/bash
+# Retarget pub/static symlinks that point at container paths (/var/www/...)
+# back to the host checkout under ~/Sites. Needed because grunt runs on the
+# host while Magento (in the container) creates symlinks using container paths.
+if [ ! -d pub/static ]; then
+    echo "fixsl: no pub/static here (run from a Magento project root)" >&2
+    exit 1
+fi
+count=0
+while IFS= read -r l; do
+    t="$(readlink "$l")"
+    ln -sfn "$HOME/Sites/${t#/var/www/}" "$l"
+    count=$((count+1))
+done < <(find pub/static -type l -lname "/var/www/*")
+echo "fixsl: retargeted $count symlink(s)"
+EOF
+
+echo "Creating fixnode helper (restore exec bits in node_modules)..."
+create_static_script "fixnode" <<'EOF'
+#!/bin/bash
+# Restore exec bits on node_modules binaries (stripped by the php container's
+# permission pass over the ~/Sites bind mount). Run after npm install.
+dir="${1:-node_modules}"
+if [ ! -d "$dir" ]; then
+    echo "fixnode: no '$dir' here" >&2
+    exit 1
+fi
+# .bin entries are symlinks; chmod the targets, not the links
+for link in "$dir"/.bin/*; do
+    [ -e "$link" ] || continue
+    target="$(readlink -f "$link" 2>/dev/null)"
+    [ -f "$target" ] && chmod u+x "$target"
+done
+# native binaries that must be spawned (esbuild, etc.) live under */bin/*
+find "$dir" -type f -path '*/bin/*' -exec chmod u+x {} + 2>/dev/null
+echo "fixnode: exec bits restored in $dir"
+EOF
 
 echo "All configurations have been applied successfully."
