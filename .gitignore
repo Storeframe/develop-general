@@ -8,3 +8,14 @@ pg_*
 bin/docker
 docker-bin
 nginx/etc/nginx/ssl
+
+# Local tooling and editors
+.claude/
+.idea/
+.vscode/
+*.swp
+
+# Backups made while editing configs (e.g. php.ini.bak-20260928)
+*.bak
+*.bak-*
+*.orig
