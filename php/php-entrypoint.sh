@@ -77,5 +77,15 @@ if [ -d "/var/www" ]; then
     sleep 1
 fi
 
+# Trust the bind-mounted repos under /var/www.
+# The host UID does not match the container's, so git otherwise aborts with
+# "dubious ownership" — which silently breaks tools that shell out to git,
+# e.g. `pint --dirty` reports "0 files" instead of erroring. --system writes
+# /etc/gitconfig so this applies to both root and the app user.
+# Idempotent: add the entry only once, even though this runs on every start.
+if ! git config --system --get-all safe.directory 2>/dev/null | grep -qx '\*'; then
+    git config --system --add safe.directory '*' 2>/dev/null || true
+fi
+
 # Execute the original command (php-fpm)
 exec "$@"
