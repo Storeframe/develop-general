@@ -1,6 +1,7 @@
 .DS_Store
 .env
 nginx/etc/nginx/sites-enabled
+nginx/etc/nginx/sites-disabled
 mailpit
 mariadb
 odoo
